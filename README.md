@@ -1,5 +1,3 @@
-![alt tag](https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTN0q_pkPSjH7DBayqnt8gAVN1LUdlwiZ-b68nk6jfi6w1qR21_)
-
 Houdini é uma biblioteca para abstrair chamadas diretas(de primeiro nível) ao banco de dados Oracle. Com o Houdini é possível mapear queries e procedures de forma simples e expressiva.
 
 ##Criando Contextos
