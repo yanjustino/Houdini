@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Houdini.Oracle
 {
@@ -16,10 +14,10 @@ namespace Houdini.Oracle
         public DataMapper(DataContext context)
         {
             Context = context;
-            Connection = context.Transaction.Connection;
+            Connection = context.DataBase.Transaction.Connection;
         }
 
-        protected EnumerableRowCollection<DataRow> Query(string sql, object param, object cursor, CommandType commandType)
+        internal EnumerableRowCollection<DataRow> QueryDataRows(string sql, object param, object cursor, CommandType commandType)
         {
             try
             {
@@ -54,7 +52,7 @@ namespace Houdini.Oracle
 
         protected IEnumerable<T> Query<T>(string sql, object param, object cursor, CommandType commandType = CommandType.Text)
         {
-            var rows = Query(sql, param, cursor, commandType);
+            var rows = QueryDataRows(sql, param, cursor, commandType);
 
             foreach (var row in rows)
             {
@@ -95,11 +93,18 @@ namespace Houdini.Oracle
     {
         public DataMapper(DataContext context) : base(context) { }
 
-        protected IEnumerable<T> Query<TMapper>(object param)
-            where TMapper : IProcedureMapping
+        protected IEnumerable<T> Query(string sql, object param, object cursor, CommandType commandType = CommandType.Text)
         {
-            var Mapping = Context.DataBase.Get<TMapper>();
-            var rows = Query(Mapping.GetCommandText, param, Mapping.Cursor, CommandType.StoredProcedure);
+            return base.Query<T>(sql, param, cursor, CommandType.StoredProcedure);
+        }
+
+        protected IEnumerable<T> Query<TProcedureMapping>(object param, object cursor = null)
+            where TProcedureMapping : IProcedureMapping
+        {
+            var Mapping = Context.DataBase.Get<TProcedureMapping>();
+            var outCursor = cursor ?? Mapping.Cursor;
+
+            var rows = QueryDataRows(Mapping.GetCommandText, param, outCursor, CommandType.StoredProcedure);
             return MappingFields(rows, Mapping);
         }
 

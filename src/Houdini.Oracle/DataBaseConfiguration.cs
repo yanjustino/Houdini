@@ -1,9 +1,5 @@
-﻿using Houdini.Oracle;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Houdini.Oracle
 {
@@ -13,6 +9,7 @@ namespace Houdini.Oracle
 
         internal DataBaseConfiguration(DataContextTransaction transaction)
         {
+            Transaction = transaction;
             _procedures = new Dictionary<Type, IProcedureMapping>();
         }
 
@@ -28,12 +25,10 @@ namespace Houdini.Oracle
             return _procedures[typeof(T)];
         }
 
-
         public void Dispose()
         {
             Transaction.Dispose();
             _procedures.Clear();
         }
-
     }
 }
