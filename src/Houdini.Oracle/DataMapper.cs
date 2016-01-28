@@ -24,7 +24,7 @@ namespace Houdini.Oracle
             else
             {
                 var procedure = new { command = sql, input = param, cursor = cursor };
-                command = QueryEngine.Prepare(Context.DataBase.Transaction.Connection,procedure);
+                command = QueryEngine.Prepare(Context.DataBase.Transaction.Connection, procedure);
             }
 
             return command.ExecuteReader();
@@ -54,14 +54,41 @@ namespace Houdini.Oracle
             return result;
         }
 
-        protected void Execute(string sql, object param, CommandType commandType = CommandType.Text)
+        protected void ExecuteNonQuery(string sql, object param, CommandType commandType = CommandType.Text)
         {
-            OracleCommand command = (commandType == CommandType.Text)
+            try
+            {
+                OracleCommand command = (commandType == CommandType.Text)
                 ? QueryEngine.Prepare(Context.DataBase.Transaction.Connection, sql, param)
                 : QueryEngine.Prepare(Context.DataBase.Transaction.Connection, new { command = sql, input = param });
 
-            Context.DataBase.Transaction.BeginTransaction();
-            command.ExecuteNonQuery();
+                command.Transaction.Connection.Open();
+                command.ExecuteNonQuery();
+                command.Transaction.Connection.Open();
+            }
+            catch (Exception ex)
+            {
+                Context.DataBase.Transaction.Rollback();
+                throw ex;
+            }
+        }
+
+        protected void Execute(string sql, object param, CommandType commandType = CommandType.Text)
+        {
+            try
+            {
+                OracleCommand command = (commandType == CommandType.Text)
+                ? QueryEngine.Prepare(Context.DataBase.Transaction.Connection, sql, param)
+                : QueryEngine.Prepare(Context.DataBase.Transaction.Connection, new { command = sql, input = param });
+
+                Context.DataBase.Transaction.BeginTransaction();
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Context.DataBase.Transaction.Rollback();
+                throw ex;
+            }
         }
     }
 

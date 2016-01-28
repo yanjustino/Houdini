@@ -2,7 +2,7 @@
 
 namespace Houdini.Oracle
 {
-    public class PropertyConfig
+    public sealed class PropertyConfig
     {
         public Type Type { get; private set; }
         public string Name { get; private set; }
