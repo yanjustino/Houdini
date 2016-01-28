@@ -1,5 +1,4 @@
-﻿using Oracle.ManagedDataAccess.Client;
-using System;
+﻿using System;
 
 namespace Houdini.Oracle
 {
@@ -7,16 +6,10 @@ namespace Houdini.Oracle
     {
         public DataContext(string connectionString)
         {
-            var connection = new OracleConnection(connectionString);
-            var transaction = new DataContextTransaction(connection);
+            var transaction = new DataContextTransaction(connectionString);
             DataBase = new DataBaseConfiguration(transaction);
-
             OnCreating();
         }
-
-        public DataContext(string dataSource, string user, string password)
-            : this($"data source={dataSource};user id={user};password={password}")
-        { }
 
         public DataBaseConfiguration DataBase { get; private set; }
 

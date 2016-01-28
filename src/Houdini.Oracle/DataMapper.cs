@@ -9,83 +9,59 @@ namespace Houdini.Oracle
     public class DataMapper
     {
         protected DataContext Context { get; set; }
-        protected OracleConnection Connection { get; set; }
 
         public DataMapper(DataContext context)
         {
             Context = context;
-            Connection = context.DataBase.Transaction.Connection;
         }
 
-        internal EnumerableRowCollection<DataRow> QueryDataRows(string sql, object param, object cursor, CommandType commandType)
+        internal OracleDataReader QueryReader(string sql, object param, object cursor, CommandType commandType)
         {
-            try
-            {
-                OracleCommand command = null;
+            OracleCommand command = null;
 
-                if (commandType == CommandType.Text)
-                    command = QueryEngine.Prepare(Connection, sql, param, cursor);
-                else
-                    command = QueryEngine.Prepare(Connection, new
-                    {
-                        command = sql,
-                        input = param,
-                        cursor = cursor
-                    });
-
-                Connection.Open();
-                var dataSet = GetDataSet(command);
-                var rows = dataSet.Tables[0].AsEnumerable();
-                dataSet.Dispose();
-
-                return rows;
-            }
-            catch (Exception ex)
+            if (commandType == CommandType.Text)
+                command = QueryEngine.Prepare(Context.DataBase.Transaction.Connection, sql, param, cursor);
+            else
             {
-                throw ex;
+                var procedure = new { command = sql, input = param, cursor = cursor };
+                command = QueryEngine.Prepare(Context.DataBase.Transaction.Connection,procedure);
             }
-            finally
-            {
-                Connection.Close();
-            }
+
+            return command.ExecuteReader();
         }
 
-        protected IEnumerable<T> Query<T>(string sql, object param, object cursor, CommandType commandType = CommandType.Text)
+        public IEnumerable<T> Query<T>(string sql, object param, object cursor, CommandType commandType = CommandType.Text)
         {
-            var rows = QueryDataRows(sql, param, cursor, commandType);
+            Context.DataBase.Transaction.Open();
 
-            foreach (var row in rows)
+            var result = new List<T>();
+            var rows = QueryReader(sql, param, cursor, commandType);
+
+            while (rows.Read())
             {
                 var instance = Activator.CreateInstance<T>();
 
                 foreach (var property in instance.GetType().GetProperties())
                 {
-                    if (row[property.Name] == null) continue;
-                    property.SetValue(instance, row[property.Name]);
+                    if (rows[property.Name] == null) continue;
+                    property.SetValue(instance, rows[property.Name]);
                 }
 
-                yield return instance;
+                result.Add(instance);
             }
+
+            Context.DataBase.Transaction.Close();
+            return result;
         }
 
         protected void Execute(string sql, object param, CommandType commandType = CommandType.Text)
         {
             OracleCommand command = (commandType == CommandType.Text)
-                ? QueryEngine.Prepare(Connection, sql, param)
-                : QueryEngine.Prepare(Connection, new { command = sql, input = param });
+                ? QueryEngine.Prepare(Context.DataBase.Transaction.Connection, sql, param)
+                : QueryEngine.Prepare(Context.DataBase.Transaction.Connection, new { command = sql, input = param });
 
             Context.DataBase.Transaction.BeginTransaction();
             command.ExecuteNonQuery();
-        }
-
-        private DataSet GetDataSet(OracleCommand command)
-        {
-            using (var adapter = new OracleDataAdapter(command))
-            {
-                var dataset = new DataSet();
-                adapter.Fill(dataset);
-                return dataset;
-            }
         }
     }
 
@@ -93,24 +69,22 @@ namespace Houdini.Oracle
     {
         public DataMapper(DataContext context) : base(context) { }
 
-        protected IEnumerable<T> Query(string sql, object param, object cursor, CommandType commandType = CommandType.Text)
+        public IEnumerable<T> Query(string sql, object param, object cursor, CommandType commandType = CommandType.Text)
         {
             return base.Query<T>(sql, param, cursor, CommandType.StoredProcedure);
         }
 
-        protected IEnumerable<T> Query<TProcedureMapping>(object param, object cursor = null)
+        public IEnumerable<T> Query<TProcedureMapping>(object param, object cursor = null)
             where TProcedureMapping : IProcedureMapping
         {
             var Mapping = Context.DataBase.Get<TProcedureMapping>();
             var outCursor = cursor ?? Mapping.Cursor;
+            var result = new List<T>();
 
-            var rows = QueryDataRows(Mapping.GetCommandText, param, outCursor, CommandType.StoredProcedure);
-            return MappingFields(rows, Mapping);
-        }
+            Context.DataBase.Transaction.Open();
+            var reader = QueryReader(Mapping.GetCommandText, param, outCursor, CommandType.StoredProcedure);
 
-        private IEnumerable<T> MappingFields(EnumerableRowCollection<DataRow> rows, IProcedureMapping Mapping)
-        {
-            foreach (var row in rows)
+            while (reader.Read())
             {
                 var instance = Activator.CreateInstance<T>();
 
@@ -118,14 +92,17 @@ namespace Houdini.Oracle
                 {
                     var field = Mapping.Properties.FirstOrDefault(x => x.Name == property.Name);
 
-                    if (field == null && row[field.Column] == null)
+                    if (field == null && reader[field.Column] == null)
                         continue;
 
-                    property.SetValue(instance, row[field.Column]);
+                    property.SetValue(instance, reader[field.Column]);
                 }
 
-                yield return instance;
+                result.Add(instance);
             }
+            Context.DataBase.Transaction.Close();
+
+            return result;
         }
     }
 }

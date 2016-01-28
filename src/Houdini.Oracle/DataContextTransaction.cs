@@ -4,28 +4,33 @@ using System.Data;
 
 namespace Houdini.Oracle
 {
-    public class DataContextTransaction : IDisposable
+    public sealed class DataContextTransaction : IDisposable
     {
         internal OracleConnection Connection { get; private set; }
         internal OracleTransaction Transaction { get; private set; }
 
-        public DataContextTransaction(OracleConnection connection)
+        internal DataContextTransaction(string connectionString)
+        {
+            Connection = new OracleConnection(connectionString);
+        }
+
+        internal DataContextTransaction(OracleConnection connection)
         {
             Connection = connection;
         }
 
-        public virtual void Open()
+        public void Open()
         {
             if (Connection.State == ConnectionState.Closed)
                 Connection.Open();
         }
 
-        public virtual void Close()
+        public void Close()
         {
             Dispose();
         }
 
-        public virtual void Commit()
+        public void Commit()
         {
             Transaction.Commit();
 
@@ -33,7 +38,7 @@ namespace Houdini.Oracle
                 Connection.Close();
         }
 
-        public virtual void Rollback()
+        public void Rollback()
         {
             Transaction.Rollback();
         }
