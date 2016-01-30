@@ -22,7 +22,6 @@ namespace Query
     public class Context : DataContext
     {
         public Context(string connectionString) : base(connectionString) { }
-        public Context(string dataSource, string user, string password) : base(dataSource, user, password) { }
 
         protected override void OnCreating()
         {
