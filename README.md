@@ -1,6 +1,15 @@
-Houdini é uma biblioteca para abstrair chamadas diretas(de primeiro nível) ao banco de dados Oracle. Com o Houdini é possível mapear queries e procedures de forma simples e expressiva.
 
-##Criando Contextos
+#Houdini.Oracle
+Houdini ORM to mapping Procedures and Queries results
+
+##Install Houdini
+To install houdini run:
+````
+Install-Package Houdini.Oracle
+```
+
+##Create Context
+Context is a Unity Of Work
 
 ```csharp
 using Houdini.Oracle
@@ -20,8 +29,7 @@ namespace Query
 }
 ```
 
-## Mapeando Procedures
-
+## Mapping Stored Procedures
 ```csharp
 using Houdini.Oracle;
 using System.Linq;
@@ -66,7 +74,7 @@ namespace QueryModels
 }
 ```
 
-## Mapeamento implícito 
+##Implicit Mapping 
 
 ```csharp
 using Houdini.Oracle;
@@ -94,6 +102,32 @@ namespace QueryModels
                     param: new { pId = id },
                     cursor: new { rCursor = 0 },
                     commandType: CommandType.StoredProcedure
+                );
+        }
+    }
+}
+
+```
+
+## Executing 
+
+```csharp
+using Houdini.Oracle;
+using System.Data;
+
+namespace QueryModels
+{
+    internal class RepresentanteDataMapper : DataMapper
+    {
+        public RepresentanteDataMapper(Context context) : base(context) { }
+
+        public IEnumerable<RepresentanteModel> Adicionar(int id, string name)
+        {
+            Execute
+                (
+                    sql: "INSERT INTO Tabela (id, name) VALUES (:pId, :pName)",
+                    param: new { pId = id, pName = name },
+                    commandType: CommandType.Text
                 );
         }
     }
