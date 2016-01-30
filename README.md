@@ -131,6 +131,8 @@ namespace QueryModels
                     param: new { pId = id, pName = name },
                     commandType: CommandType.Text
                 );
+            
+            SaveChange();
         }
     }
 }
